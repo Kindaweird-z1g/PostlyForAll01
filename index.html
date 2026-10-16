@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Postly — post · chat · moderate</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a23; --panel-2:#1e2230; --line:#2b3142;
+    --txt:#eef1f8; --muted:#8b93a7;
+    --accent:#7c5cff; --accent-2:#22d3ee; --bot:#10b981;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{height:100%}
+  body{
+    margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,Inter,sans-serif;
+    color:var(--txt); display:flex; justify-content:center; padding:16px; height:100dvh;
+    background:
+      radial-gradient(900px 500px at 12% -10%, #2a1f5e 0%, transparent 60%),
+      radial-gradient(700px 400px at 100% 0%, #0e3a44 0%, transparent 55%),
+      var(--bg);
+  }
+  .app{
+    width:100%; max-width:880px; height:100%; display:flex; flex-direction:column;
+    background:rgba(23,26,35,.9); backdrop-filter:blur(10px);
+    border:1px solid var(--line); border-radius:20px; overflow:hidden;
+    box-shadow:0 24px 70px rgba(0,0,0,.55);
+  }
+  header{
+    display:flex; align-items:center; gap:12px; padding:12px 16px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(124,92,255,.14),transparent);
+  }
+  .logo{font-weight:800; font-size:1.3rem; letter-spacing:-.03em; line-height:1; color:var(--txt)}
+  .logo b{background:linear-gradient(90deg,var(--accent),var(--accent-2));
+    -webkit-background-clip:text; background-clip:text; color:transparent}
+  .logo small{display:block; font-size:.56rem; letter-spacing:.16em;
+    color:var(--muted); font-weight:700; margin-top:3px}
+  .spacer{flex:1}
+  .who{
+    display:flex; align-items:center; gap:9px;
+    background:var(--panel-2); border:1px solid var(--line);
+    border-radius:999px; padding:5px 8px 5px 6px;
+  }
+  .who .txt{font-size:.78rem; line-height:1.15; color:var(--txt)}
+  .who .txt b{display:block; font-size:.85rem; color:var(--txt)}
+  .who .txt span{color:var(--muted); font-size:.7rem}
+  .conn{
+    font-size:.7rem; font-weight:700; padding:3px 8px; border-radius:999px;
+    border:1px solid currentColor;
+  }
+  .conn.live{color:#34d399}
+  .conn.wait{color:#fbbf24}
+  .conn.off{color:#f87171}
+  .btn{
+    background:linear-gradient(135deg,var(--accent),#5b8cff);
+    border:0; color:#fff; font:inherit; font-weight:700; font-size:.83rem;
+    padding:8px 18px; border-radius:999px; cursor:pointer;
+    transition:.15s; white-space:nowrap;
+  }
+  .btn:hover{filter:brightness(1.12); transform:translateY(-1px)}
+  .btn:active{transform:none}
+  .btn.ghost{background:var(--panel); border:1px solid var(--line); color:var(--txt)}
+  .btn.ghost:hover{border-color:var(--accent)}
+  .btn.danger{background:linear-gradient(135deg,#ef4444,#f97316)}
+  .btn.ok{background:linear-gradient(135deg,#10b981,#22c55e)}
+  .btn.sm{padding:5px 13px; font-size:.76rem}
+  .btn:disabled{opacity:.4; cursor:not-allowed; transform:none}
+  nav{display:flex; gap:4px; padding:8px 12px 0; border-bottom:1px solid var(--line); overflow-x:auto}
+  .tab{
+    background:none; border:0; color:var(--muted); font:inherit; font-weight:650;
+    font-size:.85rem; padding:9px 14px; border-radius:10px 10px 0 0; cursor:pointer;
+    border-bottom:2px solid transparent; transition:.15s; white-space:nowrap;
+    display:flex; align-items:center; gap:6px;
+  }
+  .tab:hover{color:var(--txt); background:rgba(255,255,255,.04)}
+  .tab.on{color:var(--txt); border-bottom-color:var(--accent); background:rgba(124,92,255,.1)}
+  .pill{
+    background:#ef4444; color:#fff; font-size:.64rem; font-weight:800;
+    border-radius:999px; padding:1px 6px; line-height:1.5;
+  }
+  main{flex:1; min-height:0; display:flex; flex-direction:column}
+  .view{flex:1; min-height:0; overflow-y:auto; padding:16px}
+  .view::-webkit-scrollbar,.msgs::-webkit-scrollbar{width:9px}
+  .view::-webkit-scrollbar-thumb,.msgs::-webkit-scrollbar-thumb{background:#333a4d; border-radius:9px}
+  .avatar{
+    width:40px; height:40px; flex:0 0 40px; border-radius:50%;
+    display:grid; place-items:center; font-weight:800; font-size:.82rem;
+    color:#fff; background:var(--c,#7c5cff);
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.14);
+  }
+  .avatar.sm{width:30px; height:30px; flex-basis:30px; font-size:.68rem}
+  .badge{
+    font-size:.62rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
+    padding:2px 7px; border-radius:999px; border:1px solid currentColor;
+  }
+  .badge.user{color:#94a3b8}
+  .badge.reviewer{color:#22d3ee}
+  .badge.mod{color:#a78bfa}
+  .badge.admin{color:#fbbf24}
+  .badge.bot{color:#34d399}
+  .composer{
+    display:flex; gap:12px; background:var(--panel-2);
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px; margin-bottom:16px;
+  }
+  .composer-main{flex:1; min-width:0}
+  textarea{
+    width:100%; background:#12141c; border:1px solid var(--line);
+    border-radius:10px; resize:none; color:var(--txt);
+    font:inherit; font-size:.95rem; outline:none;
+    min-height:52px; line-height:1.5; padding:10px 12px;
+  }
+  textarea::placeholder{color:#6f778c}
+  textarea:focus{border-color:var(--accent)}
+  .img-row{margin-top:8px}
+  .img-row input, .field input{
+    width:100%; background:#12141c; border:1px solid var(--line);
+    border-radius:10px; padding:9px 12px; color:var(--txt);
+    font:inherit; font-size:.85rem; outline:none;
+  }
+  .img-row input::placeholder, .field input::placeholder{color:#6f778c}
+  .img-row input:focus, .field input:focus{border-color:var(--accent)}
+  .bar{display:flex; align-items:center; gap:10px; margin-top:10px}
+  .count{font-size:.74rem; color:var(--muted); margin-left:auto}
+  .count.warn{color:#ff9d6b}
+  #feed{display:flex; flex-direction:column; gap:12px}
+  .post{
+    display:flex; gap:12px; background:var(--panel-2);
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px; animation:pop .22s ease;
+  }
+  .post.removed{opacity:.55; border-style:dashed}
+  @keyframes pop{from{opacity:0; transform:translateY(6px)} to{opacity:1}}
+  .post-body{flex:1; min-width:0}
+  .post-head{display:flex; align-items:center; gap:7px; flex-wrap:wrap; font-size:.85rem}
+  .post-head .name{font-weight:750; color:var(--txt)}
+  .post-head .time{color:var(--muted); font-size:.76rem}
+  .post-text{
+    margin:7px 0 0; color:#eef1f8; font-size:.95rem; line-height:1.6;
+    white-space:pre-wrap; word-wrap:break-word; overflow-wrap:anywhere;
+  }
+  .post.removed .post-text{color:#9aa3b8}
+  .post-text a{color:var(--accent-2); text-decoration:none}
+  .post-text a:hover{text-decoration:underline}
+  .post-img{
+    margin-top:10px; width:100%; max-height:340px; object-fit:cover;
+    border-radius:12px; border:1px solid var(--line); display:block;
+  }
+  .actions{display:flex; gap:4px; margin-top:10px; flex-wrap:wrap}
+  .act{
+    background:none; border:1px solid transparent; color:var(--muted);
+    font:inherit; font-size:.78rem; font-weight:650; padding:5px 10px;
+    border-radius:999px; cursor:pointer; transition:.15s;
+  }
+  .act:hover{background:rgba(255,255,255,.07); color:var(--txt)}
+  .act.like.on{color:#ff6b8b; background:rgba(255,107,139,.12)}
+  .act.push{margin-left:auto}
+  .act.del:hover{color:#ff6b6b; background:rgba(255,107,107,.12)}
+  .comments{margin-top:8px; display:flex; flex-direction:column; gap:5px}
+  .comment{
+    font-size:.84rem; background:#12141c; border:1px solid var(--line);
+    border-radius:10px; padding:7px 11px; color:#d6dbe8;
+    word-wrap:break-word; overflow-wrap:anywhere;
+  }
+  .comment b{color:var(--txt); margin-right:5px}
+  .comment-form{display:none; gap:8px; margin-top:8px}
+  .comment-form.open{display:flex}
+  .comment-form input{
+    flex:1; background:#12141c; border:1px solid var(--line);
+    border-radius:999px; padding:8px 14px; color:var(--txt);
+    font:inherit; font-size:.84rem; outline:none;
+  }
+  .comment-form input:focus{border-color:var(--accent)}
+  .empty{
+    text-align:center; color:var(--muted); padding:44px 20px;
+    font-size:.88rem; border:1px dashed var(--line); border-radius:var(--radius);
+  }
+  .view.chat{overflow:hidden; display:flex; flex-direction:column; padding:0}
+  .msgs{flex:1; min-height:0; overflow-y:auto; padding:16px;
+    display:flex; flex-direction:column; gap:12px;}
+  .msg{display:flex; gap:10px; max-width:84%; animation:pop .18s ease}
+  .msg.me{align-self:flex-end; flex-direction:row-reverse}
+  .msg-wrap{min-width:0}
+  .msg-bubble{
+    background:var(--panel-2); border:1px solid var(--line);
+    border-radius:14px; padding:9px 13px; font-size:.9rem;
+    line-height:1.5; color:#eef1f8;
+    word-wrap:break-word; overflow-wrap:anywhere; white-space:pre-wrap;
+  }
+  .msg.me .msg-bubble{
+    background:linear-gradient(135deg,rgba(124,92,255,.38),rgba(91,140,255,.3));
+    border-color:rgba(124,92,255,.55);
+  }
+  .msg.bot .msg-bubble{
+    background:linear-gradient(135deg,rgba(16,185,129,.16),rgba(16,185,129,.06));
+    border-color:rgba(16,185,129,.45);
+  }
+  .msg-meta{
+    font-size:.7rem; color:var(--muted); margin-bottom:4px;
+    display:flex; gap:6px; align-items:center; flex-wrap:wrap;
+  }
+  .msg-meta b{color:var(--txt)}
+  .msg.me .msg-meta{justify-content:flex-end}
+  .msg-tools{display:flex; gap:4px; margin-top:4px; opacity:.35; transition:.15s}
+  .msg:hover .msg-tools{opacity:1}
+  .mention{color:#c4b5fd; background:rgba(124,92,255,.18);
+    padding:0 5px; border-radius:6px; font-weight:700;}
+  .chatbar{
+    display:flex; gap:10px; padding:12px 16px;
+    border-top:1px solid var(--line); background:var(--panel);
+    align-items:center; flex-wrap:wrap;
+  }
+  .chatbar input{
+    flex:1; min-width:160px; background:#12141c; border:1px solid var(--line);
+    border-radius:999px; padding:11px 16px; color:var(--txt);
+    font:inherit; font-size:.9rem; outline:none;
+  }
+  .chatbar input::placeholder{color:#6f778c}
+  .chatbar input:focus{border-color:var(--accent)}
+  .chat-hint{width:100%; font-size:.72rem; color:var(--muted); padding:0 4px 2px}
+  .chat-hint code{
+    background:#12141c; border:1px solid var(--line); border-radius:6px;
+    padding:1px 6px; color:#a5b4fc; cursor:pointer;
+  }
+  .card{
+    background:var(--panel-2); border:1px solid var(--line);
+    border-radius:var(--radius); padding:14px; margin-bottom:12px;
+  }
+  .card h3{margin:0 0 6px; font-size:.95rem; color:var(--txt)}
+  .card .meta{font-size:.76rem; color:var(--muted); margin-bottom:8px}
+  .row{
+    display:flex; align-items:center; gap:10px; padding:9px 0;
+    border-bottom:1px solid var(--line); flex-wrap:wrap;
+  }
+  .row:last-child{border-bottom:0}
+  .row .grow{flex:1; min-width:130px; color:var(--txt)}
+  .section-title{
+    font-size:.72rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--muted); font-weight:800; margin:18px 0 10px;
+  }
+  .section-title:first-child{margin-top:0}
+  select.mini{
+    background:#12141c; border:1px solid var(--line); border-radius:8px;
+    color:var(--txt); font:inherit; font-size:.78rem; padding:5px 8px; outline:none;
+  }
+  .hint{font-size:.76rem; color:var(--muted); line-height:1.55}
+  .status-chip{
+    font-size:.66rem; font-weight:800; letter-spacing:.05em; text-transform:uppercase;
+    padding:2px 8px; border-radius:999px; border:1px solid currentColor;
+  }
+  .status-chip.open{color:#fbbf24}
+  .status-chip.accepted{color:#34d399}
+  .status-chip.denied{color:#f87171}
+  .status-chip.done{color:#60a5fa}
+  .notif-reason{
+    color:#dfe4f0; font-size:.88rem; line-height:1.55; margin:8px 0 0;
+    white-space:pre-wrap; word-wrap:break-word;
+  }
+  .cap-row{display:flex; align-items:center; gap:8px; font-size:.8rem; padding:6px 0;}
+  .cap-bar{
+    flex:1; height:8px; background:#12141c; border:1px solid var(--line);
+    border-radius:99px; overflow:hidden;
+  }
+  .cap-fill{height:100%; background:linear-gradient(90deg,var(--accent),var(--accent-2));}
+  .cap-bot{height:100%; background:linear-gradient(90deg,#10b981,#22c55e);}
+  .role-banner{
+    display:flex; align-items:center; gap:14px;
+    background:linear-gradient(135deg,rgba(124,92,255,.14),rgba(34,211,238,.08));
+    border:1px solid rgba(124,92,255,.4);
+    border-radius:var(--radius); padding:14px; margin-bottom:16px;
+    flex-wrap:wrap;
+  }
+  .role-banner .icon{font-size:1.4rem}
+  .role-banner .txt{flex:1; min-width:180px}
+  .role-banner .txt b{display:block; font-size:.92rem}
+  .role-banner .txt span{font-size:.78rem; color:var(--muted)}
+  .role-banner .btns{display:flex; gap:8px; flex-wrap:wrap}
+  .overlay{
+    position:fixed; inset:0; background:rgba(5,6,10,.75);
+    backdrop-filter:blur(4px); display:grid; place-items:center;
+    padding:18px; z-index:50;
+  }
+  .modal{
+    width:100%; max-width:400px; background:var(--panel);
+    border:1px solid var(--line); border-radius:18px; padding:22px;
+    box-shadow:0 30px 80px rgba(0,0,0,.6);
+  }
+  .modal h2{margin:0 0 14px; font-size:1.1rem; color:var(--txt)}
+  .tabs2{display:flex; gap:6px; margin-bottom:16px; background:#12141c; padding:4px; border-radius:999px}
+  .tabs2 button{
+    flex:1; background:none; border:0; color:var(--muted); font:inherit;
+    font-weight:700; font-size:.82rem; padding:8px; border-radius:999px; cursor:pointer;
+  }
+  .tabs2 button.on{background:var(--accent); color:#fff}
+  .field{margin-bottom:12px}
+  .field label{display:block; font-size:.76rem; color:var(--muted); font-weight:700; margin-bottom:5px}
+  .err{color:#ff8f8f; font-size:.78rem; min-height:1.1em; margin:8px 0 0}
+  .modal .btn{width:100%; margin-top:6px; padding:11px}
+  .bot-chip{
+    display:inline-flex; align-items:center; gap:4px;
+    background:rgba(16,185,129,.1); border:1px solid rgba(16,185,129,.4);
+    color:#6ee7b7; font-size:.72rem; font-weight:700;
+    padding:2px 8px; border-radius:999px; margin:2px 3px 2px 0;
+  }
+  .setup{
+    background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(249,115,22,.08));
+    border:1px solid rgba(239,68,68,.45);
+    border-radius:var(--radius); padding:16px; margin-bottom:16px;
+  }
+  .setup h2{margin:0 0 8px; font-size:1rem}
+  .setup p{font-size:.84rem; line-height:1.55; color:#dfe4f0; margin:6px 0}
+  .setup code{
+    background:#12141c; border:1px solid var(--line); border-radius:6px;
+    padding:1px 6px; color:#a5b4fc; font-size:.82rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="logo"><b>Postly</b><small>POST · CHAT · MODERATE</small></div>
+    <div class="spacer"></div>
+    <span class="conn wait" id="connBadge">connecting…</span>
+    <div class="who">
+      <div class="avatar sm" id="meAvatar" style="--c:#6b7280">?</div>
+      <div class="txt"><b id="meName">Guest</b><span id="meRole">not signed in</span></div>
+    </div>
+    <button class="btn ghost sm" id="signBtn">Sign in</button>
+  </header>
+
+  <nav>
+    <button class="tab on" data-tab="feed">📰 Feed</button>
+    <button class="tab" data-tab="chat">💬 Chat</button>
+    <button class="tab" data-tab="requests" hidden>📨 Requests <span class="pill" id="reqCount" hidden></span></button>
+    <button class="tab" data-tab="members" hidden>👥 Members</button>
+  </nav>
+
+  <main>
+    <section class="view" id="view-feed">
+      <div class="setup" id="setupBox" hidden>
+        <h2>⚠️ Supabase not configured</h2>
+        <p>Paste your project URL and anon key into the two constants at the top of the &lt;script&gt; block.</p>
+      </div>
+
+      <div class="role-banner" id="roleBanner" hidden>
+        <div class="icon">🛡️</div>
+        <div class="txt" id="roleBannerText">
+          <b>Want to help moderate Postly?</b>
+          <span>Request a role — an Admin will review your request.</span>
+        </div>
+        <div class="btns" id="roleBannerBtns">
+          <button class="btn sm" data-reqrole="mod">Request Mod</button>
+          <button class="btn ghost sm" data-reqrole="reviewer">Request Reviewer</button>
+        </div>
+      </div>
+
+      <div class="composer">
+        <div class="avatar" id="composerAvatar" style="--c:#6b7280">?</div>
+        <div class="composer-main">
+          <textarea id="postText" maxlength="280" placeholder="What's happening?"></textarea>
+          <div class="img-row">
+            <input id="postImg" placeholder="Optional image URL (https://…)">
+          </div>
+          <div class="bar">
+            <span class="count" id="postCount">0 / 280</span>
+            <button class="btn" id="postBtn">Post</button>
+          </div>
+        </div>
+      </div>
+      <div id="feed"></div>
+    </section>
+
+    <section class="view chat" id="view-chat" hidden>
+      <div class="msgs" id="msgs"></div>
+      <div class="chatbar">
+        <div class="chat-hint">
+          Commands:
+          <code data-cmd="?commands">?commands</code>
+          <code data-cmd="?help">?help</code>
+          <code data-cmd="?request mod">?request mod</code>
+          <code data-cmd="?request reviewer">?request reviewer</code>
+          <code data-cmd="?ban @user reason">?ban</code>
+        </div>
+        <input id="chatInput" maxlength="400" placeholder="Message the room…  (or type ?commands)">
+        <button class="btn" id="chatBtn">Send</button>
+      </div>
+    </section>
+
+    <section class="view" id="view-requests" hidden>
+      <div class="section-title">Open requests</div>
+      <div id="reqList"></div>
+      <div class="section-title">Muted users</div>
+      <div class="card" id="muteList"></div>
+    </section>
+
+    <section class="view" id="view-members" hidden>
+      <div class="section-title">Role capacity</div>
+      <div class="card" id="capList"></div>
+      <div class="section-title">Members &amp; roles</div>
+      <div class="card" id="memberList"></div>
+      <div class="section-title">Bot fill-ins (auto)</div>
+      <div class="card" id="botList"></div>
+      <div class="section-title">Banned</div>
+      <div class="card" id="banList"></div>
+    </section>
+  </main>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="modal">
+    <h2>Sign in to Postly</h2>
+    <div class="tabs2">
+      <button class="on" data-pane="member">Member</button>
+      <button data-pane="admin">Admin</button>
+    </div>
+    <div id="pane-member">
+      <div class="field"><label>Display name</label>
+        <input id="mName" maxlength="18" placeholder="e.g. Nova"></div>
+      <p class="hint" style="margin:0 0 14px">
+        You'll join as a <b>Member</b>. Inside, request to become a
+        <b>Reviewer</b> or <b>Moderator</b> — an Admin will be notified.
+      </p>
+      <button class="btn" id="mGo">Enter Postly</button>
+      <p class="err" id="mErr"></p>
+    </div>
+    <div id="pane-admin" hidden>
+      <div class="field"><label>Username</label>
+        <input id="aUser" autocomplete="off" placeholder="Username"></div>
+      <div class="field"><label>Password</label>
+        <input id="aPass" type="password" placeholder="Password"></div>
+      <button class="btn" id="aGo">Sign in as Admin</button>
+      <p class="err" id="aErr"></p>
+    </div>
+    <button class="btn ghost" id="closeModal" style="margin-top:10px">Cancel</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+/* =========================================================
+   ⚙️ CONFIG — already filled in for you
+   ========================================================= */
+const SUPABASE_URL      = 'https://jyjeplofridhmmnqokjd.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_df_p3xkbSPLLya5CXSgy3w_9cxHeoeR';
+
+const KEY        = 'postly.me.v3';
+const ADMIN_USER = 'Kindaweird';
+const ADMIN_PASS = '123456';
+const BOT        = 'AutoHelp';
+
+const LV = { user:0, reviewer:1, mod:2, admin:3 };
+const RL = { user:'Member', reviewer:'Reviewer', mod:'Moderator', admin:'Admin', bot:'Bot' };
+const RC = { user:'#64748b', reviewer:'#22d3ee', mod:'#8b5cf6', admin:'#f59e0b', bot:'#10b981' };
+const CAP = { admin:1, mod:5, reviewer:30 };
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2, 10);
+const pad = n => String(n).padStart(2, '0');
+
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+function fmt(t){
+  let h = esc(t);
+  h = h.replace(/@([A-Za-z0-9_\-]{2,18})/g, '<span class="mention">@$1</span>');
+  h = h.replace(/(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  return h;
+}
+function ago(t){
+  const s = Math.floor((Date.now() - t) / 1000);
+  if (s < 45) return 'just now';
+  const m = Math.floor(s / 60); if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60); if (h < 24) return h + 'h ago';
+  const d = Math.floor(h / 24); if (d < 7)  return d + 'd ago';
+  return new Date(t).toLocaleDateString();
+}
+const initials = n => (n || '?').trim().slice(0, 2).toUpperCase();
+
+let toastTimer;
+function toast(msg){
+  let el = $('#toast');
+  if (!el){
+    el = document.createElement('div');
+    el.id = 'toast';
+    el.style.cssText = 'position:fixed;left:50%;bottom:26px;transform:translateX(-50%);' +
+      'background:#1e2230;border:1px solid #2b3142;color:#eef1f8;padding:11px 18px;' +
+      'border-radius:999px;font:600 .83rem system-ui,sans-serif;z-index:99;' +
+      'box-shadow:0 14px 40px rgba(0,0,0,.5);transition:.2s;pointer-events:none;max-width:90vw';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.opacity = '0'; }, 2400);
+}
+
+function setConn(state, label){
+  const el = $('#connBadge');
+  el.className = 'conn ' + state;
+  el.textContent = label;
+}
+
+/* =========================================================
+   SUPABASE CLIENT
+   ========================================================= */
+let sb = null;
+const configured = () =>
+  SUPABASE_URL.startsWith('https://') &&
+  SUPABASE_ANON_KEY.length > 20 &&
+  !SUPABASE_URL.includes('PASTE_YOUR') &&
+  !SUPABASE_ANON_KEY.includes('PASTE_YOUR');
+
+if (configured() && window.supabase){
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
+/* =========================================================
+   STATE
+   ========================================================= */
+let S = {
+  me: { name:'', role:'user' },
+  posts: [], messages: [], members: {}, banned: [], mutes: {}, notifs: []
+};
+
+function loadMe(){
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) S.me = Object.assign({ name:'', role:'user' }, JSON.parse(raw));
+  } catch(e){}
+}
+function saveMe(){ localStorage.setItem(KEY, JSON.stringify(S.me)); }
+
+/* ---- Cloud fetch ---- */
+async function loadFromCloud(){
+  if (!sb) return;
+  const [p, m, mb, n, b, mu] = await Promise.all([
+    sb.from('posts').select('*'),
+    sb.from('messages').select('*'),
+    sb.from('members').select('*'),
+    sb.from('notifs').select('*'),
+    sb.from('banned').select('*'),
+    sb.from('mutes').select('*')
+  ]);
+
+  if (p.error) throw p.error;
+  if (m.error) throw m.error;
+  if (mb.error) throw mb.error;
+  if (n.error) throw n.error;
+  if (b.error) throw b.error;
+  if (mu.error) throw mu.error;
+
+  S.posts = (p.data || []).map(r => ({
+    id: r.id, author: r.author, role: r.role, time: r.time,
+    likes: r.likes, likedBy: r.liked_by || [], text: r.text, img: r.img,
+    comments: r.comments || [], reports: r.reports || [], status: r.status
+  }));
+  S.messages = (m.data || []).map(r => ({
+    id: r.id, author: r.author, role: r.role, time: r.time,
+    removed: r.removed, text: r.text
+  }));
+  S.members = {};
+  (mb.data || []).forEach(r => { S.members[r.name] = r.role; });
+  S.notifs = (n.data || []).map(r => ({
+    id: r.id, type: r.type, from: r.from_user, target: r.target,
+    reason: r.reason, requestedRole: r.requested_role,
+    audience: r.audience || [], time: r.time, status: r.status
+  }));
+  S.banned = (b.data || []).map(r => r.name);
+  S.mutes = {};
+  (mu.data || []).forEach(r => { S.mutes[r.name] = r.expires; });
+
+  if (S.me.name && S.members[S.me.name] && S.members[S.me.name] !== S.me.role){
+    S.me.role = S.members[S.me.name];
+    saveMe();
+  }
+}
+
+/* ---- Cloud write helpers ---- */
+const db = {
+  async post(p){
+    if (!sb) return;
+    await sb.from('posts').upsert({
+      id:p.id, author:p.author, role:p.role, time:p.time,
+      likes:p.likes, liked_by:p.likedBy, text:p.text, img:p.img,
+      comments:p.comments, reports:p.reports, status:p.status
+    });
+  },
+  async delPost(id){ if (sb) await sb.from('posts').delete().eq('id', id); },
+  async msg(m){
+    if (!sb) return;
+    await sb.from('messages').upsert({
+      id:m.id, author:m.author, role:m.role, time:m.time,
+      removed:m.removed, text:m.text
+    });
+  },
+  async member(name, role){
+    if (sb) await sb.from('members').upsert({ name, role });
+  },
+  async notif(n){
+    if (!sb) return;
+    await sb.from('notifs').upsert({
+      id:n.id, type:n.type, from_user:n.from, target:n.target,
+      reason:n.reason, requested_role:n.requestedRole,
+      audience:n.audience, time:n.time, status:n.status
+    });
+  },
+  async banned(name, on){
+    if (!sb) return;
+    if (on) await sb.from('banned').upsert({ name });
+    else    await sb.from('banned').delete().eq('name', name);
+  },
+  async mute(name, expires){
+    if (!sb) return;
+    if (expires) await sb.from('mutes').upsert({ name, expires });
+    else         await sb.from('mutes').delete().eq('name', name);
+  }
+};
+
+/* =========================================================
+   PERMISSIONS & CAPACITY
+   ========================================================= */
+const lvl        = () => LV[S.me.role] ?? 0;
+const signedIn   = () => !!S.me.name;
+const isReviewer = () => lvl() >= 1;
+const isMod      = () => lvl() >= 2;
+const isAdmin    = () => lvl() >= 3;
+const roleOf     = n => S.members[n] || 'user';
+const isBanned   = n => S.banned.includes(n);
+const isMuted    = n => (S.mutes[n] || 0) > Date.now();
+
+function findUser(name){
+  if (!name) return null;
+  const lower = name.toLowerCase();
+  return Object.keys(S.members).find(n => n.toLowerCase() === lower) || null;
+}
+const humanCount = role => Object.values(S.members).filter(r => r === role).length;
+function botsForRole(role){
+  if (!CAP[role]) return [];
+  const needed = Math.max(0, CAP[role] - humanCount(role));
+  const prefix = role === 'mod' ? 'ModBot' : role === 'reviewer' ? 'ReviewBot' : 'Bot';
+  const out = [];
+  for (let i = 1; i <= needed; i++) out.push(prefix + '-' + pad(i));
+  return out;
+}
+const hasOpenSlot = role => humanCount(role) < CAP[role];
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+function renderIdentity(){
+  const name = S.me.name || 'Guest';
+  const role = S.me.name ? S.me.role : 'user';
+  $('#meName').textContent = name;
+  $('#meRole').textContent = S.me.name ? RL[role] : 'not signed in';
+  const col = RC[role];
+  ['#meAvatar','#composerAvatar'].forEach(sel => {
+    const el = $(sel);
+    el.style.setProperty('--c', col);
+    el.textContent = initials(name);
+  });
+  $('#signBtn').textContent = S.me.name ? 'Sign out' : 'Sign in';
+}
+
+function renderTabs(){
+  $('[data-tab="requests"]').hidden = !isReviewer();
+  $('[data-tab="members"]').hidden  = !isAdmin();
+  const open = visibleNotifs().filter(n => n.status === 'open').length;
+  const pill = $('#reqCount');
+  pill.textContent = open;
+  pill.hidden = !open;
+  const current = $('.tab.on') && $('.tab.on').dataset.tab;
+  if ((current === 'requests' && !isReviewer()) ||
+      (current === 'members'  && !isAdmin())){
+    switchTab('feed');
+  }
+}
+function switchTab(tab){
+  $$('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === tab));
+  ['feed','chat','requests','members'].forEach(v => {
+    $('#view-' + v).hidden = (v !== tab);
+  });
+  if (tab === 'chat') scrollChat(true);
+}
+
+function renderRoleBanner(){
+  const b = $('#roleBanner');
+  if (!signedIn() || S.me.role !== 'user' || isBanned(S.me.name)){
+    b.hidden = true; return;
+  }
+  b.hidden = false;
+  const pending = S.notifs.find(n =>
+    n.type === 'rolereq' && n.from === S.me.name && n.status === 'open');
+  const txt = $('#roleBannerText');
+  const btns = $('#roleBannerBtns');
+  if (pending){
+    txt.innerHTML = '<b>Request pending ⏳</b><span>Your <b>' + RL[pending.requestedRole] +
+      '</b> request is waiting for an Admin to review it.</span>';
+    btns.innerHTML = '<span class="hint">Submitted ' + ago(pending.time) + '</span>';
+  } else {
+    txt.innerHTML = '<b>Want to help moderate Postly?</b><span>Request a role — an Admin will review your request. Empty slots are currently covered by bots.</span>';
+    const modOpen = hasOpenSlot('mod');
+    const revOpen = hasOpenSlot('reviewer');
+    btns.innerHTML =
+      '<button class="btn sm" data-reqrole="mod" ' + (modOpen ? '' : 'disabled') + '>Request Mod ' + (modOpen ? '' : '(full)') + '</button>' +
+      '<button class="btn ghost sm" data-reqrole="reviewer" ' + (revOpen ? '' : 'disabled') + '>Request Reviewer ' + (revOpen ? '' : '(full)') + '</button>';
+  }
+}
+
+function postCard(p){
+  const role    = roleOf(p.author);
+  const mine    = p.author === S.me.name;
+  const removed = p.status === 'removed';
+  const liked   = p.likedBy.includes(S.me.name);
+
+  const comments = p.comments.map(c =>
+    '<div class="comment"><b>' + esc(c.author) + '</b>' + fmt(c.text) + '</div>').join('');
+  const img = p.img
+    ? '<img class="post-img" src="' + esc(p.img) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">'
+    : '';
+
+  const actions = [
+    '<button class="act like ' + (liked ? 'on' : '') + '" data-act="like" data-id="' + p.id + '">♥ ' + p.likes + '</button>',
+    '<button class="act" data-act="toggle-comment" data-id="' + p.id + '">💬 ' + p.comments.length + '</button>',
+    '<button class="act" data-act="report" data-id="' + p.id + '">⚑ Report</button>'
+  ];
+  if (!removed && (mine || isMod()))
+    actions.push('<button class="act del push" data-act="del" data-id="' + p.id + '">Delete</button>');
+  if (removed && isMod())
+    actions.push('<button class="act push" data-act="restore" data-id="' + p.id + '">Restore</button>');
+
+  return '<article class="post ' + (removed ? 'removed' : '') + '">' +
+    '<div class="avatar" style="--c:' + RC[role] + '">' + initials(p.author) + '</div>' +
+    '<div class="post-body">' +
+      '<div class="post-head">' +
+        '<span class="name">' + esc(p.author) + '</span>' +
+        '<span class="badge ' + role + '">' + RL[role] + '</span>' +
+        '<span class="time">· ' + ago(p.time) + '</span>' +
+        (removed ? '<span class="time">· removed by a moderator</span>' : '') +
+      '</div>' +
+      '<p class="post-text">' + fmt(p.text) + '</p>' +
+      img +
+      '<div class="actions">' + actions.join('') + '</div>' +
+      '<div class="comments">' + comments + '</div>' +
+      '<form class="comment-form" data-id="' + p.id + '">' +
+        '<input maxlength="160" placeholder="Write a comment…">' +
+        '<button class="btn sm" type="submit">Send</button>' +
+      '</form>' +
+    '</div>' +
+  '</article>';
+}
+function renderFeed(){
+  const list = S.posts
+    .filter(p => p.status === 'live' || isMod())
+    .sort((a, b) => b.time - a.time);
+  $('#feed').innerHTML = list.length
+    ? list.map(postCard).join('')
+    : '<div class="empty">No posts yet. Be the first to post something.</div>';
+}
+
+function renderChat(){
+  const list = S.messages.filter(m => !m.removed || isMod())
+    .sort((a, b) => a.time - b.time);
+  $('#msgs').innerHTML = list.length ? list.map(m => {
+    const role = m.author === BOT ? 'bot' : roleOf(m.author);
+    const mine = m.author === S.me.name;
+    const isBot = m.author === BOT;
+    const tools = (isMod() && !isBot)
+      ? '<div class="msg-tools">' +
+          '<button class="act" data-act="delmsg" data-id="' + m.id + '">delete</button>' +
+          (mine ? '' : '<button class="act" data-act="mute" data-id="' + m.id + '">mute 5m</button>') +
+        '</div>'
+      : '';
+    return '<div class="msg ' + (mine ? 'me' : '') + ' ' + (isBot ? 'bot' : '') + '">' +
+      '<div class="avatar sm" style="--c:' + RC[role] + '">' + (isBot ? '🤖' : initials(m.author)) + '</div>' +
+      '<div class="msg-wrap">' +
+        '<div class="msg-meta">' +
+          '<b>' + esc(m.author) + '</b>' +
+          '<span class="badge ' + role + '">' + RL[role] + '</span>' +
+          '<span>' + ago(m.time) + '</span>' +
+          (m.removed ? '<span>· removed</span>' : '') +
+        '</div>' +
+        '<div class="msg-bubble">' + (m.removed
+          ? '<i>message removed by a moderator</i>'
+          : fmt(m.text)) + '</div>' +
+        tools +
+      '</div>' +
+    '</div>';
+  }).join('') : '<div class="empty">No messages yet — say hi 👋</div>';
+}
+function scrollChat(force){
+  const box = $('#msgs');
+  if (!box) return;
+  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 160;
+  if (force || near) box.scrollTop = box.scrollHeight;
+}
+
+const visibleNotifs = () =>
+  S.notifs.filter(n => (n.audience || []).some(r => (LV[r] ?? 99) <= lvl()));
+
+const TYPE_LABEL = {
+  banreq:'Ban request', mutereq:'Mute request',
+  report:'Report', help:'Help', update:'Update', rolereq:'Role request'
+};
+
+function renderRequests(){
+  const list = visibleNotifs().sort((a, b) => b.time - a.time);
+  const box = $('#reqList');
+  if (!list.length){
+    box.innerHTML = '<div class="empty">No requests right now. ✨</div>';
+  } else {
+    box.innerHTML = list.map(n => {
+      const open = n.status === 'open';
+      const isRoleReq = n.type === 'rolereq';
+      const canResolve = (n.type === 'banreq' || n.type === 'mutereq' || isRoleReq)
+                         && isMod() && open && (isRoleReq ? isAdmin() : true);
+      const canClose = (n.type === 'help' || n.type === 'report' || n.type === 'update') && open;
+      const buttons = [];
+      if (canResolve){
+        const label = isRoleReq ? ('Make ' + RL[n.requestedRole]) : 'Accept';
+        buttons.push('<button class="btn ok sm" data-nact="accept" data-id="' + n.id + '">' + label + '</button>');
+        buttons.push('<button class="btn danger sm" data-nact="deny" data-id="' + n.id + '">Deny</button>');
+      }
+      if (canClose)
+        buttons.push('<button class="btn ghost sm" data-nact="close" data-id="' + n.id + '">Mark handled</button>');
+
+      const targetLine = isRoleReq
+        ? (' → wants <b>' + RL[n.requestedRole] + '</b>')
+        : (n.target ? (' → target <b>@' + esc(n.target) + '</b>') : '');
+
+      return '<div class="card">' +
+        '<h3>' + (TYPE_LABEL[n.type] || 'Request') +
+          ' <span class="status-chip ' + n.status + '">' + n.status + '</span></h3>' +
+        '<div class="meta">from <b>' + esc(n.from) + '</b>' + targetLine + ' · ' + ago(n.time) + '</div>' +
+        '<p class="notif-reason">' + fmt(n.reason || '(no details given)') + '</p>' +
+        (buttons.length ? '<div class="actions">' + buttons.join('') + '</div>' : '') +
+      '</div>';
+    }).join('');
+  }
+
+  const muted = Object.entries(S.mutes).filter(e => e[1] > Date.now());
+  $('#muteList').innerHTML = muted.length ? muted.map(e => {
+    const n = e[0], t = e[1];
+    return '<div class="row">' +
+      '<div class="grow">' + esc(n) + '</div>' +
+      '<span class="hint">expires in ' + Math.ceil((t - Date.now()) / 60000) + ' min</span>' +
+      (isMod() ? '<button class="btn ghost sm" data-nact="unmute" data-name="' + esc(n) + '">Unmute</button>' : '') +
+    '</div>';
+  }).join('') : '<div class="hint">No muted users.</div>';
+}
+
+function renderMembers(){
+  const caps = [
+    ['Admin',     'admin',    RC.admin],
+    ['Moderator', 'mod',      RC.mod],
+    ['Reviewer',  'reviewer', RC.reviewer]
+  ];
+  $('#capList').innerHTML = caps.map(c => {
+    const label = c[0], role = c[1], col = c[2];
+    const humans = humanCount(role);
+    const bots = botsForRole(role).length;
+    const hp = (humans / CAP[role]) * 100;
+    const bp = (bots / CAP[role]) * 100;
+    return '<div class="cap-row">' +
+      '<div style="width:88px; color:' + col + '; font-weight:700">' + label + '</div>' +
+      '<div class="cap-bar"><div style="display:flex; height:100%">' +
+        '<div class="cap-fill" style="width:' + hp + '%"></div>' +
+        '<div class="cap-bot" style="width:' + bp + '%"></div>' +
+      '</div></div>' +
+      '<div style="width:130px; text-align:right" class="hint">' +
+        humans + ' human · ' + bots + ' bot / ' + CAP[role] +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  const names = Object.keys(S.members).sort((a, b) =>
+    (LV[S.members[b]] - LV[S.members[a]]) || a.localeCompare(b));
+
+  $('#memberList').innerHTML = names.length ? names.map(n => {
+    const role = S.members[n];
+    const opts = Object.keys(RL).filter(r => r !== 'bot').map(r =>
+      '<option value="' + r + '"' + (role === r ? ' selected' : '') + '>' + RL[r] + '</option>').join('');
+    return '<div class="row">' +
+      '<div class="avatar sm" style="--c:' + RC[role] + '">' + initials(n) + '</div>' +
+      '<div class="grow"><b>' + esc(n) + '</b> <span class="badge ' + role + '">' + RL[role] + '</span>' +
+        (n === S.me.name ? ' <span class="hint">(you)</span>' : '') + '</div>' +
+      '<select class="mini" data-role-for="' + esc(n) + '">' + opts + '</select>' +
+      '<button class="btn ghost sm" data-mact="toggleban" data-name="' + esc(n) + '">' +
+        (isBanned(n) ? 'Unban' : 'Ban') +
+      '</button>' +
+    '</div>';
+  }).join('') : '<div class="hint">No members yet.</div>';
+
+  const modBots = botsForRole('mod');
+  const revBots = botsForRole('reviewer');
+  let botHtml = '';
+  if (modBots.length){
+    botHtml += '<div class="meta" style="margin-bottom:6px">' +
+      '<b style="color:' + RC.mod + '">🛡️ ' + modBots.length + ' mod slot' +
+      (modBots.length === 1 ? '' : 's') + ' filled by bots</b></div>';
+    botHtml += modBots.map(b => '<span class="bot-chip">🤖 ' + esc(b) + '</span>').join('');
+  }
+  if (revBots.length){
+    botHtml += '<div class="meta" style="margin:14px 0 6px">' +
+      '<b style="color:' + RC.reviewer + '">🔍 ' + revBots.length + ' reviewer slot' +
+      (revBots.length === 1 ? '' : 's') + ' filled by bots</b></div>';
+    if (revBots.length > 8){
+      botHtml += '<span class="bot-chip">🤖 ' + esc(revBots[0]) + '</span>' +
+        '<span class="hint" style="margin:0 6px">…through…</span>' +
+        '<span class="bot-chip">🤖 ' + esc(revBots[revBots.length - 1]) + '</span>' +
+        '<div class="hint" style="margin-top:8px">(' + revBots.length +
+        ' reviewer bots auto-fill empty slots.)</div>';
+    } else {
+      botHtml += revBots.map(b => '<span class="bot-chip">🤖 ' + esc(b) + '</span>').join('');
+    }
+  }
+  if (!modBots.length && !revBots.length){
+    botHtml = '<div class="hint">All mod and reviewer slots are held by humans. 🎉</div>';
+  } else {
+    botHtml += '<p class="hint" style="margin-top:12px">Bots auto-fill empty slots. When an Admin approves a human, the matching bot is freed.</p>';
+  }
+  $('#botList').innerHTML = botHtml;
+
+  $('#banList').innerHTML = S.banned.length
+    ? S.banned.map(n =>
+        '<div class="row"><div class="grow">' + esc(n) + '</div>' +
+        '<button class="btn ghost sm" data-mact="toggleban" data-name="' + esc(n) + '">Unban</button></div>'
+      ).join('')
+    : '<div class="hint">Nobody is banned.</div>';
+}
+
+function renderAll(){
+  renderIdentity();
+  renderTabs();
+  renderRoleBanner();
+  renderFeed();
+  renderChat();
+  renderRequests();
+  renderMembers();
+}
+
+/* =========================================================
+   ACTIONS — posts
+   ========================================================= */
+async function makePost(){
+  if (!requireSignIn()) return;
+  if (isBanned(S.me.name)) return toast('You are banned from posting.');
+  if (isMuted(S.me.name))  return toast('You are muted for a few more minutes.');
+  const text = $('#postText').value.trim();
+  const img  = $('#postImg').value.trim();
+  if (!text && !img) return;
+
+  const p = {
+    id: uid(), author: S.me.name, role: S.me.role, text, img,
+    time: Date.now(), likes: 0, likedBy: [], comments: [], reports: [], status: 'live'
+  };
+  S.posts.unshift(p);
+  $('#postText').value = '';
+  $('#postImg').value  = '';
+  $('#postCount').textContent = '0 / 280';
+  renderAll();
+  toast('Posted!');
+  await db.post(p);
+}
+async function toggleLike(id){
+  if (!requireSignIn()) return;
+  const p = S.posts.find(x => x.id === id); if (!p) return;
+  const i = p.likedBy.indexOf(S.me.name);
+  if (i >= 0){ p.likedBy.splice(i, 1); p.likes = Math.max(0, p.likes - 1); }
+  else       { p.likedBy.push(S.me.name); p.likes++; }
+  renderAll();
+  await db.post(p);
+}
+async function addComment(id, text){
+  if (!requireSignIn()) return;
+  const p = S.posts.find(x => x.id === id); if (!p || !text.trim()) return;
+  p.comments.push({ id: uid(), author: S.me.name, text: text.trim(), time: Date.now() });
+  renderAll();
+  await db.post(p);
+}
+async function reportPost(id){
+  if (!requireSignIn()) return;
+  const p = S.posts.find(x => x.id === id); if (!p) return;
+  const reason = prompt('Why are you reporting this post?');
+  if (!reason) return;
+  p.reports.push({ by: S.me.name, reason: reason.slice(0, 140), time: Date.now() });
+  const n = {
+    id: uid(), type:'report', from: S.me.name, target:p.author,
+    reason: reason.slice(0, 140), audience:['reviewer','mod','admin'],
+    time: Date.now(), status:'open', requestedRole:null
+  };
+  S.notifs.push(n);
+  renderAll();
+  toast('Report sent to the moderation team.');
+  await Promise.all([db.post(p), db.notif(n)]);
+}
+async function deletePost(id){
+  const p = S.posts.find(x => x.id === id); if (!p) return;
+  if (p.author !== S.me.name && !isMod()) return;
+  if (!confirm('Delete this post?')) return;
+  S.posts = S.posts.filter(x => x.id !== id);
+  renderAll();
+  await db.delPost(id);
+}
+async function restorePost(id){
+  if (!isMod()) return;
+  const p = S.posts.find(x => x.id === id); if (!p) return;
+  p.status = 'live';
+  renderAll();
+  await db.post(p);
+}
+
+/* =========================================================
+   ACTIONS — chat
+   ========================================================= */
+async function botSay(text){
+  const m = {
+    id: uid(), author: BOT, role: 'bot',
+    text, time: Date.now(), removed: false
+  };
+  S.messages.push(m);
+  renderAll();
+  scrollChat(true);
+  await db.msg(m);
+}
+async function sendMessage(){
+  if (!requireSignIn()) return;
+  if (isBanned(S.me.name)) return toast('You are banned from chatting.');
+  if (isMuted(S.me.name))  return toast('You are muted for a few more minutes.');
+
+  const input = $('#chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  if (text.startsWith('?')){ await runCommand(text); return; }
+
+  const m = {
+    id: uid(), author: S.me.name, role: S.me.role,
+    text, time: Date.now(), removed: false
+  };
+  S.messages.push(m);
+  renderAll();
+  scrollChat(true);
+  await db.msg(m);
+}
+async function deleteMessage(id){
+  if (!isMod()) return;
+  const m = S.messages.find(x => x.id === id); if (!m) return;
+  m.removed = true;
+  renderAll();
+  await db.msg(m);
+}
+async function muteAuthorOf(id){
+  if (!isMod()) return;
+  const m = S.messages.find(x => x.id === id); if (!m) return;
+  if (m.author === S.me.name) return;
+  if (lvl() <= LV[roleOf(m.author)]) return toast('You cannot mute someone at or above your role.');
+  const exp = Date.now() + 5 * 60 * 1000;
+  S.mutes[m.author] = exp;
+  renderAll();
+  toast(m.author + ' muted for 5 minutes.');
+  await db.mute(m.author, exp);
+}
+
+/* =========================================================
+   ROLE REQUESTS
+   ========================================================= */
+async function requestRole(role){
+  if (!requireSignIn()) return;
+  if (['mod','reviewer'].indexOf(role) === -1) return;
+  const user = S.me.name;
+  if (isBanned(user)) return toast('Banned accounts cannot request roles.');
+  if (S.me.role !== 'user') return toast("You're already a " + RL[S.me.role] + '.');
+  const pending = S.notifs.find(n =>
+    n.type === 'rolereq' && n.from === user && n.status === 'open');
+  if (pending) return toast('You already have a pending ' + RL[pending.requestedRole] + ' request.');
+  if (!hasOpenSlot(role))
+    return toast('All ' + CAP[role] + ' ' + RL[role] + ' slots are currently held by humans.');
+
+  const n = {
+    id: uid(), type:'rolereq', from:user, requestedRole:role,
+    reason:'Requested from the role banner.', audience:['admin'],
+    time: Date.now(), status:'open', target:null
+  };
+  S.notifs.push(n);
+  renderAll();
+  toast('Sent! An Admin has been notified about your ' + RL[role] + ' request.');
+  await db.notif(n);
+}
+
+/* =========================================================
+   RESOLVE NOTIF
+   ========================================================= */
+async function resolveNotif(id, action){
+  const n = S.notifs.find(x => x.id === id); if (!n) return;
+
+  if (n.type === 'rolereq'){
+    if (!isAdmin()) return toast('Only Admins can resolve role requests.');
+    if (action === 'accept'){
+      if (!hasOpenSlot(n.requestedRole)){
+        n.status = 'denied';
+        renderAll();
+        await db.notif(n);
+        return botSay('❌ @' + n.from + ' your ' + RL[n.requestedRole] +
+          ' request was auto-denied — all ' + CAP[n.requestedRole] + ' slots are held by humans.');
+      }
+      S.members[n.from] = n.requestedRole;
+      if (n.from === S.me.name){ S.me.role = n.requestedRole; saveMe(); }
+      n.status = 'accepted';
+      renderAll();
+      await Promise.all([db.notif(n), db.member(n.from, n.requestedRole)]);
+      const remaining = CAP[n.requestedRole] - humanCount(n.requestedRole);
+      return botSay('✅ @' + n.from + ' your <b>' + RL[n.requestedRole] +
+        '</b> request was <b>accepted</b> by @' + S.me.name + '!<br>' +
+        'A bot slot was freed. ' + remaining + ' human slot' + (remaining === 1 ? '' : 's') +
+        ' remain open for ' + RL[n.requestedRole] + '.');
+    }
+    n.status = 'denied';
+    renderAll();
+    await db.notif(n);
+    return botSay('❌ @' + n.from + ' your ' + RL[n.requestedRole] + ' request was denied by @' + S.me.name + '.');
+  }
+
+  if (n.type === 'banreq' || n.type === 'mutereq'){
+    if (!isMod()) return toast('Only moderators and admins can resolve this.');
+    if (action === 'accept'){
+      if (n.type === 'banreq'){
+        if (S.banned.indexOf(n.target) === -1) S.banned.push(n.target);
+        const touched = [];
+        S.posts.forEach(p => {
+          if (p.author === n.target){ p.status = 'removed'; touched.push(db.post(p)); }
+        });
+        await Promise.all([db.banned(n.target, true), ...touched]);
+      } else {
+        const exp = Date.now() + 10 * 60 * 1000;
+        S.mutes[n.target] = exp;
+        await db.mute(n.target, exp);
+      }
+      n.status = 'accepted';
+      renderAll();
+      await db.notif(n);
+      return botSay('✅ @' + n.from + ' your ' + (n.type === 'banreq' ? 'ban' : 'mute') +
+        ' request against @' + n.target + ' was ACCEPTED by ' + S.me.name + '.');
+    }
+    n.status = 'denied';
+    renderAll();
+    await db.notif(n);
+    return botSay('❌ @' + n.from + ' your ' + (n.type === 'banreq' ? 'ban' : 'mute') +
+      ' request against @' + n.target + ' was DENIED by ' + S.me.name + '.');
+  }
+
+  n.status = 'done';
+  renderAll();
+  await db.notif(n);
+  return botSay('📬 Request #' + n.id + ' marked as handled by ' + S.me.name + '.');
+}
+
+/* =========================================================
+   COMMANDS
+   ========================================================= */
+const COMMANDS = [
+  { usage:'?help',                desc:'Pings every Reviewer, Moderator and Admin.' },
+  { usage:'?commands',            desc:'AutoHelp tags you and lists every command.' },
+  { usage:'?request mod [reason]',desc:'Request to become a Moderator (Admin is notified).' },
+  { usage:'?request reviewer [reason]', desc:'Request to become a Reviewer (Admin is notified).' },
+  { usage:'?rolecheck',           desc:'Shows which roles still have human slots open.' },
+  { usage:'?ban @user <reason>',  desc:'Files a ban request with the Mods & Admins.' },
+  { usage:'?mute @user <reason>', desc:'Requests a 10-minute mute.' },
+  { usage:'?report @user <reason>', desc:'Reports a member to the mod team.' },
+  { usage:'?update <suggestion>', desc:'Sends a suggestion straight to the Admins.' },
+  { usage:'?role @user <role>',   desc:'Admin only — user / reviewer / mod / admin.' },
+  { usage:'?unban @user',         desc:'Admin only — lift a ban.' },
+  { usage:'?whois @user',         desc:'Shows a member card.' },
+  { usage:'?stats',               desc:'Live counters for Postly.' },
+  { usage:'?rules',               desc:'The house rules.' },
+  { usage:'?ping',                desc:'Check whether AutoHelp is awake.' },
+  { usage:'?roll',                desc:'Roll a d100.' },
+  { usage:'?notifs',              desc:'How many requests are waiting.' },
+  { usage:'?clear',               desc:'Mod+ — wipe the chat room.' },
+  { usage:'?announce <text>',     desc:'Mod+ — broadcast as AutoHelp.' }
+];
+
+function takeMention(str){
+  const m = String(str || '').match(/@([A-Za-z0-9_\-]{2,18})/);
+  if (!m) return { target:null, rest:String(str || '').trim() };
+  const rest = String(str).replace(m[0], '').replace(/^[{[(]\s*|\s*[}\])]$/g, '').trim();
+  return { target: m[1], rest };
+}
+
+async function runCommand(raw){
+  const user = S.me.name;
+  const body = raw.trim().replace(/^\?/, '');
+  const sp   = body.indexOf(' ');
+  const cmd  = (sp === -1 ? body : body.slice(0, sp)).toLowerCase();
+  const args = sp === -1 ? '' : body.slice(sp + 1).trim();
+
+  switch (cmd){
+    case 'commands': {
+      const list = COMMANDS.map(c => '• <b>' + esc(c.usage) + '</b> — ' + esc(c.desc)).join('<br>');
+      return botSay('@' + user + ' here is everything I can do 👇<br>' + list);
+    }
+    case 'help': {
+      const n = {
+        id: uid(), type:'help', from:user, reason: args || '(no details given)',
+        audience:['reviewer','mod','admin'], time: Date.now(), status:'open',
+        target:null, requestedRole:null
+      };
+      S.notifs.push(n);
+      renderAll();
+      await db.notif(n);
+      return botSay('🛟 @' + user + ' your help request was sent to every Reviewer, Moderator and Admin.');
+    }
+    case 'request': {
+      const parts = args.split(/\s+/);
+      const role = (parts[0] || '').toLowerCase();
+      const reason = parts.slice(1).join(' ') || '(no reason given)';
+      if (['mod','reviewer'].indexOf(role) === -1)
+        return botSay('@' + user + ' usage: <b>?request mod reason</b> or <b>?request reviewer reason</b>');
+      if (S.me.role !== 'user')
+        return botSay('@' + user + " you're already a <b>" + RL[S.me.role] + '</b>.');
+      const pending = S.notifs.find(n =>
+        n.type === 'rolereq' && n.from === user && n.status === 'open');
+      if (pending)
+        return botSay('@' + user + ' you already have a pending <b>' + RL[pending.requestedRole] + '</b> request.');
+      if (!hasOpenSlot(role))
+        return botSay('@' + user + ' all <b>' + CAP[role] + '</b> ' + RL[role] + ' slots are held by humans.');
+      const n = {
+        id: uid(), type:'rolereq', from:user, requestedRole:role, reason,
+        audience:['admin'], time: Date.now(), status:'open', target:null
+      };
+      S.notifs.push(n);
+      renderAll();
+      await db.notif(n);
+      const openSlots = CAP[role] - humanCount(role);
+      return botSay('📨 @' + user + ' your <b>' + RL[role] + '</b> request has been sent to the Admins.<br>' +
+        'Reason: "' + esc(reason) + '"<br>' +
+        'Open human slots: <b>' + openSlots + '</b> of ' + CAP[role] + '.<br>' +
+        '⚡ While you wait, a bot covers the empty slot.');
+    }
+    case 'rolecheck': {
+      const lines = ['admin','mod','reviewer'].map(r => {
+        const humans = humanCount(r);
+        const bots = botsForRole(r).length;
+        return '• ' + RL[r] + ': ' + humans + ' / ' + CAP[r] + ' filled by humans · ' +
+          bots + ' bot fill-in' + (bots === 1 ? '' : 's');
+      });
+      return botSay('📋 @' + user + ' current role capacity:<br>' + lines.join('<br>'));
+    }
+    case 'ban': {
+      const t = takeMention(args);
+      if (!t.target) return botSay('@' + user + ' usage: <b>?ban @username reason</b>');
+      const target = findUser(t.target);
+      if (!target) return botSay('@' + user + ' I couldn\'t find a member called "' + esc(t.target) + '".');
+      if (target === user) return botSay('@' + user + ' you can\'t request a ban on yourself 🙂');
+      if (roleOf(target) === 'admin') return botSay('@' + user + ' Admins can\'t be banned through ?ban.');
+      if (isBanned(target)) return botSay('@' + user + ' @' + target + ' is already banned.');
+      const reason = t.rest || '(no reason given)';
+      const n = {
+        id: uid(), type:'banreq', from:user, target, reason,
+        audience:['mod','admin'], time: Date.now(), status:'open', requestedRole:null
+      };
+      S.notifs.push(n);
+      renderAll();
+      await db.notif(n);
+      return botSay('📨 @' + user + ' your <b>ban request</b> against @' + target +
+        ' was sent to the Moderators and Admins.<br>' +
+        'Reason: "' + esc(reason) + '"<br>' +
+        '⚠️ <b>Warning:</b> @' + user + ', false ban requests put <b>your own account</b> at risk.');
+    }
+    case 'mute': {
+      const t = takeMention(args);
+      if (!t.target) return botSay('@' + user + ' usage: <b>?mute @username reason</b>');
+      const target = findUser(t.target);
+      if (!target) return botSay('@' + user + ' I couldn\'t find "' + esc(t.target) + '".');
+      if (target === user) return botSay('@' + user + ' you can\'t mute yourself 🙂');
+      const n = {
+        id: uid(), type:'mutereq', from:user, target, reason: t.rest || '(no reason given)',
+        audience:['mod','admin'], time: Date.now(), status:'open', requestedRole:null
+      };
+      S.notifs.push(n);
+      renderAll();
+      await db.notif(n);
+      return botSay('📨 @' + user + ' your mute request against @' + target +
+        ' was sent to the Mods and Admins. ⚠️ False requests put your account at risk.');
+    }
+    case 'report': {
+      const t = takeMention(args);
+      if (!t.target) return botSay('@' + user + ' usage: <b>?report @username reason</b>');
+      const target = findUser(t.target);
+      if (!target) return botSay('@' + user + ' I couldn\'t find "' + esc(t.target) + '".');
+      const n = {
+        id: uid(), type:'report', from:user, target, reason: t.rest || '(no reason given)',
+        audience:['reviewer','mod','admin'], time: Date.now(), status:'open', requestedRole:null
+      };
+      S.notifs.push(n);
+      renderAll();
+      await db.notif(n);
+      return botSay('⚑ @' + user + ' your report against @' + target +
+        ' was sent to the Reviewers, Mods and Admins. Thank you!');
+    }
+    case 'update': {
+      if (!args) return botSay('@' + user + ' usage: <b>?update your suggestion here</b>');
+      const n = {
+        id: uid(), type:'update', from:user, reason: args,
+        audience:['admin'], time: Date.now(), status:'open',
+        target:null, requestedRole:null
+      };
+      S.notifs.push(n);
+      renderAll();
+      await db.notif(n);
+      return botSay('🛠️ @' + user + ' thanks! Your suggestion was delivered to the Admins only.');
+    }
+    case 'role': {
+      if (!isAdmin()) return botSay('@' + user + ' only Admins can use <b>?role</b>.');
+      const t = takeMention(args);
+      const newRole = t.rest.toLowerCase();
+      if (!t.target || !LV.hasOwnProperty(newRole))
+        return botSay('@' + user + ' usage: <b>?role @username user|reviewer|mod|admin</b>');
+      const target = findUser(t.target);
+      if (!target) return botSay('@' + user + ' I couldn\'t find "' + esc(t.target) + '".');
+      const currentRole = roleOf(target);
+      if ((newRole === 'mod' || newRole === 'reviewer') && currentRole !== newRole){
+        if (!hasOpenSlot(newRole))
+          return botSay('@' + user + ' all <b>' + CAP[newRole] + '</b> ' + RL[newRole] + ' slots are held by humans.');
+      }
+      if (newRole === 'admin' && currentRole !== 'admin')
+        return botSay('@' + user + ' there is only <b>1 Admin slot</b>, and it\'s reserved.');
+      S.members[target] = newRole;
+      if (target === S.me.name){ S.me.role = newRole; saveMe(); }
+      renderAll();
+      await db.member(target, newRole);
+      const bots = botsForRole(newRole).length;
+      return botSay('🔧 @' + target + ' is now a <b>' + RL[newRole] + '</b> (set by @' + user +
+        '). ' + bots + ' bot' + (bots === 1 ? '' : 's') + ' now fill the remaining ' +
+        RL[newRole] + ' slot' + (bots === 1 ? '' : 's') + '.');
+    }
+    case 'unban': {
+      if (!isAdmin()) return botSay('@' + user + ' only Admins can use <b>?unban</b>.');
+      const t = takeMention(args);
+      const target = findUser(t.target);
+      if (!target) return botSay('@' + user + ' I couldn\'t find "' + esc(t.target) + '".');
+      if (!isBanned(target)) return botSay('@' + user + ' @' + target + ' isn\'t banned.');
+      S.banned = S.banned.filter(n => n !== target);
+      renderAll();
+      await db.banned(target, false);
+      return botSay('🔓 @' + target + ' was unbanned by @' + user + '.');
+    }
+    case 'whois': {
+      const t = takeMention(args);
+      const target = findUser(t.target) || (args ? null : user);
+      if (!target) return botSay('@' + user + ' I couldn\'t find that member.');
+      const posts = S.posts.filter(p => p.author === target).length;
+      const msgs  = S.messages.filter(m => m.author === target && !m.removed).length;
+      return botSay('🔎 <b>' + esc(target) + '</b><br>' +
+        'Role: <b>' + RL[roleOf(target)] + '</b><br>' +
+        'Posts: ' + posts + ' · Messages: ' + msgs + '<br>' +
+        'Banned: ' + (isBanned(target) ? 'yes' : 'no') +
+        ' · Muted: ' + (isMuted(target) ? 'yes' : 'no'));
+    }
+    case 'stats': {
+      const live = S.posts.filter(p => p.status === 'live').length;
+      return botSay('📊 <b>Postly stats</b><br>' +
+        'Humans: ' + Object.keys(S.members).length +
+        ' · Bot fill-ins: ' + (botsForRole('mod').length + botsForRole('reviewer').length) + '<br>' +
+        'Live posts: ' + live + ' · Chat messages: ' + S.messages.filter(m => !m.removed).length + '<br>' +
+        'Open requests: ' + S.notifs.filter(n => n.status === 'open').length + '<br>' +
+        'Banned: ' + S.banned.length);
+    }
+    case 'rules':
+      return botSay('📜 <b>Postly rules</b><br>' +
+        '1. Be kind — no harassment or hate.<br>' +
+        '2. No spam or repeated self-promo.<br>' +
+        '3. Keep it safe for work.<br>' +
+        '4. False reports and ban requests are punished.<br>' +
+        '5. Mods have the final say.');
+    case 'ping':  return botSay('🏓 @' + user + ' pong — AutoHelp is online.');
+    case 'roll':  return botSay('🎲 @' + user + ' rolled <b>' + (1 + Math.floor(Math.random() * 100)) + '</b> (1–100).');
+    case 'notifs': {
+      const open = visibleNotifs().filter(n => n.status === 'open').length;
+      return botSay('📬 @' + user + ' there ' + (open === 1 ? 'is' : 'are') + ' <b>' + open +
+        '</b> open request' + (open === 1 ? '' : 's') + ' you can see.');
+    }
+    case 'clear': {
+      if (!isMod()) return botSay('@' + user + ' only Mods and Admins can use <b>?clear</b>.');
+      S.messages.forEach(m => { m.removed = true; });
+      renderAll();
+      await Promise.all(S.messages.map(m => db.msg(m)));
+      return botSay('🧹 The chat was cleared by @' + user + '.');
+    }
+    case 'announce': {
+      if (!isMod()) return botSay('@' + user + ' only Mods and Admins can use <b>?announce</b>.');
+      if (!args) return botSay('@' + user + ' usage: <b>?announce your message</b>');
+      return botSay('📣 <b>Announcement</b> (via @' + user + '): ' + esc(args));
+    }
+    default:
+      return botSay('@' + user + ' I don\'t know the command "?' + esc(cmd) +
+        '". Type <b>?commands</b> to see everything I can do.');
+  }
+}
+
+/* =========================================================
+   SIGN-IN
+   ========================================================= */
+function requireSignIn(){
+  if (signedIn()) return true;
+  openModal();
+  return false;
+}
+function openModal(){ $('#overlay').hidden = false; $('#mName').focus(); }
+function closeModal(){
+  $('#overlay').hidden = true;
+  $('#mErr').textContent = '';
+  $('#aErr').textContent = '';
+}
+async function signInMember(){
+  const name = $('#mName').value.trim();
+  if (name.length < 2){ $('#mErr').textContent = 'Pick a name with at least 2 characters.'; return; }
+  if (name.toLowerCase() === BOT.toLowerCase()){ $('#mErr').textContent = 'That name is reserved for the bot.'; return; }
+  if (/^(modbot|reviewbot)-/i.test(name)){ $('#mErr').textContent = 'That name is reserved for a bot.'; return; }
+  if (name === ADMIN_USER){ $('#mErr').textContent = 'That name is an Admin account. Use the Admin tab.'; return; }
+
+  const role = S.members[name] || 'user';
+  S.me = { name, role };
+  saveMe();
+  if (!S.members[name]){
+    S.members[name] = 'user';
+    await db.member(name, 'user');
+  }
+  closeModal();
+  renderAll();
+  toast('Signed in as ' + name + ' · ' + RL[role]);
+}
+async function signInAdmin(){
+  const u = $('#aUser').value.trim();
+  const p = $('#aPass').value;
+  if (u !== ADMIN_USER || p !== ADMIN_PASS){
+    $('#aErr').textContent = 'Invalid username or password.';
+    return;
+  }
+  S.me = { name: ADMIN_USER, role: 'admin' };
+  saveMe();
+  S.members[ADMIN_USER] = 'admin';
+  $('#aPass').value = '';
+  closeModal();
+  renderAll();
+  await db.member(ADMIN_USER, 'admin');
+  toast('Admin mode unlocked 🔓');
+}
+function signOut(){
+  S.me = { name:'', role:'user' };
+  saveMe();
+  renderAll();
+  toast('Signed out.');
+}
+
+/* =========================================================
+   REALTIME
+   ========================================================= */
+let refetchTimer;
+function scheduleRefetch(){
+  clearTimeout(refetchTimer);
+  refetchTimer = setTimeout(async () => {
+    try {
+      await loadFromCloud();
+      renderAll();
+      setConn('live', 'live');
+    } catch(e){
+      console.warn('refetch failed', e);
+      setConn('off', 'offline');
+    }
+  }, 220);
+}
+function subscribeRealtime(){
+  if (!sb) return;
+  ['posts','messages','members','notifs','banned','mutes'].forEach(t => {
+    sb.channel('rt-' + t)
+      .on('postgres_changes', { event:'*', schema:'public', table:t }, scheduleRefetch)
+      .subscribe();
+  });
+  setConn('live', 'live');
+}
+
+/* =========================================================
+   EVENTS
+   ========================================================= */
+$$('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+
+$('#signBtn').addEventListener('click', () => signedIn() ? signOut() : openModal());
+$('#closeModal').addEventListener('click', closeModal);
+$('#overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeModal(); });
+
+$$('.tabs2 button').forEach(b => b.addEventListener('click', () => {
+  $$('.tabs2 button').forEach(x => x.classList.toggle('on', x === b));
+  $('#pane-member').hidden = b.dataset.pane !== 'member';
+  $('#pane-admin').hidden  = b.dataset.pane !== 'admin';
+}));
+$('#mGo').addEventListener('click', signInMember);
+$('#aGo').addEventListener('click', signInAdmin);
+$('#aPass').addEventListener('keydown', e => { if (e.key === 'Enter') signInAdmin(); });
+$('#mName').addEventListener('keydown', e => { if (e.key === 'Enter') signInMember(); });
+
+$('#roleBanner').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-reqrole]');
+  if (!btn || btn.disabled) return;
+  requestRole(btn.dataset.reqrole);
+});
+
+$('#postBtn').addEventListener('click', makePost);
+$('#postText').addEventListener('input', e => {
+  const n = e.target.value.length;
+  const c = $('#postCount');
+  c.textContent = n + ' / 280';
+  c.classList.toggle('warn', n > 250);
+});
+$('#postText').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) makePost();
+});
+
+$('#feed').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  switch (btn.dataset.act){
+    case 'like':           toggleLike(id); break;
+    case 'report':         reportPost(id); break;
+    case 'del':            deletePost(id); break;
+    case 'restore':        restorePost(id); break;
+    case 'toggle-comment': {
+      const f = btn.closest('.post-body').querySelector('.comment-form');
+      f.classList.toggle('open');
+      if (f.classList.contains('open')) f.querySelector('input').focus();
+      break;
+    }
+  }
+});
+$('#feed').addEventListener('submit', e => {
+  if (!e.target.matches('.comment-form')) return;
+  e.preventDefault();
+  const input = e.target.querySelector('input');
+  addComment(e.target.dataset.id, input.value);
+  input.value = '';
+});
+
+$('#chatBtn').addEventListener('click', sendMessage);
+$('#chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+$('#msgs').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  if (btn.dataset.act === 'delmsg') deleteMessage(btn.dataset.id);
+  if (btn.dataset.act === 'mute')   muteAuthorOf(btn.dataset.id);
+});
+$$('.chat-hint code').forEach(c => c.addEventListener('click', () => {
+  const input = $('#chatInput');
+  input.value = c.dataset.cmd + ' ';
+  input.focus();
+}));
+
+$('#view-requests').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-nact]');
+  if (!btn) return;
+  const act = btn.dataset.nact;
+  if (act === 'unmute'){
+    delete S.mutes[btn.dataset.name];
+    renderAll();
+    db.mute(btn.dataset.name, null);
+    return;
+  }
+  if (act === 'close'){
+    const n = S.notifs.find(x => x.id === btn.dataset.id);
+    if (n){ n.status = 'done'; renderAll(); db.notif(n); }
+    return;
+  }
+  resolveNotif(btn.dataset.id, act);
+});
+
+$('#view-members').addEventListener('change', e => {
+  const sel = e.target.closest('select[data-role-for]');
+  if (!sel) return;
+  if (!isAdmin()) return;
+  const name = sel.dataset.roleFor;
+  const newRole = sel.value;
+  const oldRole = roleOf(name);
+  if (newRole === oldRole) return;
+
+  if ((newRole === 'mod' || newRole === 'reviewer') && oldRole !== newRole){
+    if (!hasOpenSlot(newRole)){
+      toast('All ' + CAP[newRole] + ' ' + RL[newRole] + ' slots are taken.');
+      renderAll(); return;
+    }
+  }
+  if (newRole === 'admin' && oldRole !== 'admin'){
+    toast('There is only 1 Admin slot.');
+    renderAll(); return;
+  }
+  if (name === ADMIN_USER && newRole !== 'admin'){
+    if (!confirm('Demote the primary Admin account? You will lose Admin access.')){
+      renderAll(); return;
+    }
+  }
+  S.members[name] = newRole;
+  if (name === S.me.name){ S.me.role = newRole; saveMe(); }
+  renderAll();
+  db.member(name, newRole);
+  toast(name + ' is now ' + RL[newRole] + '.');
+});
+$('#view-members').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-mact]');
+  if (!btn) return;
+  if (btn.dataset.mact === 'toggleban'){
+    if (!isAdmin()) return;
+    const name = btn.dataset.name;
+    if (name === S.me.name) return toast("You can't ban yourself.");
+    const on = S.banned.indexOf(name) === -1;
+    S.banned = on ? S.banned.concat(name) : S.banned.filter(n => n !== name);
+    renderAll();
+    db.banned(name, on);
+  }
+});
+
+/* =========================================================
+   BOOT
+   ========================================================= */
+async function boot(){
+  loadMe();
+
+  if (!configured()){
+    $('#setupBox').hidden = false;
+    setConn('off', 'not configured');
+    renderAll();
+    return;
+  }
+
+  try {
+    setConn('wait', 'connecting…');
+    await loadFromCloud();
+    renderAll();
+    scrollChat(true);
+    subscribeRealtime();
+    setConn('live', 'live');
+  } catch (err) {
+    console.error(err);
+    setConn('off', 'offline');
+    toast('Could not reach Supabase. Check the SQL ran and your keys are right.');
+  }
+}
+boot();
+</script>
+</body>
+</html>
